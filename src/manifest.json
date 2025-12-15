@@ -1,0 +1,26 @@
+{
+  "manifest_version": 3,
+  "name": "ASR",
+  "description": "ASR: Hide posts containing specific words.",
+  "version": "1.0.0",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "ASR"
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": true
+  },
+  "permissions": ["storage"],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://www.audiosciencereview.com/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
+
+

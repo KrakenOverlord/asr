@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .word-item {
+    @apply flex justify-between items-center gap-2 px-2.5 py-1.5 rounded-md border border-slate-700 bg-slate-950 text-xs;
+  }
+
+  .word-item span {
+    @apply break-all;
+  }
+
+  .delete-btn {
+    @apply border-none bg-transparent text-[11px] text-red-300 hover:text-red-200 cursor-pointer;
+  }
+}
+
+

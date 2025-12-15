@@ -1,0 +1,22 @@
+{
+  "name": "asr-post-hider",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "build:js": "esbuild src/popup.jsx src/options.jsx src/content.js --bundle --minify --outdir=dist --jsx=automatic",
+    "build:css": "tailwindcss -i ./src/popup.css -o ./dist/popup.css --minify",
+    "build": "rm -rf dist && mkdir -p dist && npm run build:js && npm run build:css && cp src/manifest.json dist/manifest.json && cp src/popup.html dist/popup.html && cp src/options.html dist/options.html",
+    "dev:js": "esbuild src/popup.jsx src/options.jsx src/content.js --bundle --outdir=dist --jsx=automatic --watch",
+    "dev:css": "tailwindcss -i ./src/popup.css -o ./dist/popup.css --watch"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "esbuild": "^0.24.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  }
+}
+
+
