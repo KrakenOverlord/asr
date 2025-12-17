@@ -30,7 +30,8 @@ function OptionsApp() {
 
   useEffect(() => {
     loadWordsFromStorage().then((loaded) => {
-      setWords(loaded);
+      const sorted = [...loaded].sort((a, b) => a.localeCompare(b));
+      setWords(sorted);
     });
   }, []);
 
@@ -57,7 +58,7 @@ function OptionsApp() {
       return;
     }
 
-    const updated = [...current, trimmed];
+    const updated = [...current, trimmed].sort((a, b) => a.localeCompare(b));
     try {
       await saveWordsToStorage(updated);
       setWords(updated);
@@ -71,8 +72,9 @@ function OptionsApp() {
 
   async function handleRemove(index) {
     const current = await loadWordsFromStorage();
-    if (index < 0 || index >= current.length) return;
-    const updated = [...current.slice(0, index), ...current.slice(index + 1)];
+    const sorted = [...current].sort((a, b) => a.localeCompare(b));
+    if (index < 0 || index >= sorted.length) return;
+    const updated = [...sorted.slice(0, index), ...sorted.slice(index + 1)];
     try {
       await saveWordsToStorage(updated);
       setWords(updated);

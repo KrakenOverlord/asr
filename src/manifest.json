@@ -11,7 +11,16 @@
     "page": "options.html",
     "open_in_tab": true
   },
-  "permissions": ["storage"],
+  "permissions": ["storage", "identity"],
+  "host_permissions": ["http://localhost/*"],
+  "oauth2": {
+    "client_id": "861425009327-bga68hv29um8p837e3pqooqog8icn7nk.apps.googleusercontent.com",
+    "scopes": [
+      "openid",
+      "email",
+      "profile"
+    ]
+  },
   "content_scripts": [
     {
       "matches": [

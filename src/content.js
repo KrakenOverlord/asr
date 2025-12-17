@@ -1,6 +1,46 @@
 const STORAGE_KEY = "blacklist";
+const HIDDEN_COUNT_KEY = "hiddenCount";
+const LAST_HIDDEN_TITLE_KEY = "lastHiddenTitle";
+const MANUAL_HIDDEN_KEY = "hiddenThreads";
 
-console.log("ASR content script loaded")
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", loadBlacklistAndInit);
+} else {
+  loadBlacklistAndInit();
+}
+
+function loadBlacklistAndInit() {
+  chrome.storage.local.get([STORAGE_KEY, MANUAL_HIDDEN_KEY], (result) => {
+    const list = result[STORAGE_KEY] || [];
+    const manuallyHidden = Array.isArray(result[MANUAL_HIDDEN_KEY])
+      ? result[MANUAL_HIDDEN_KEY]
+      : [];
+    initFiltering(list, manuallyHidden);
+  });
+}
+
+function initFiltering(blacklist, manuallyHiddenIds) {
+  const normalized = normalizeWords(blacklist);
+  filterThreads(document, normalized, manuallyHiddenIds);
+
+  // const observer = new MutationObserver((mutations) => {
+  //   mutations.forEach((mutation) => {
+  //     mutation.addedNodes.forEach((node) => {
+  //       if (!(node instanceof HTMLElement)) return;
+  //       if (node.matches?.("div.structItem.structItem--thread.js-inlineModContainer")) {
+  //         filterThreads(node.parentElement || document, normalized, manuallyHiddenIds);
+  //       } else {
+  //         filterThreads(node, normalized, manuallyHiddenIds);
+  //       }
+  //     });
+  //   });
+  // });
+
+  // observer.observe(document.body, {
+  //   childList: true,
+  //   subtree: true
+  // });
+}
 
 function normalizeWords(words) {
   return (words || [])
@@ -14,56 +54,113 @@ function titleContainsBlacklistedWord(titleText, blacklist) {
   return blacklist.some((word) => lowerTitle.includes(word));
 }
 
-function filterThreads(root, blacklist) {
+function saveHiddenPost(title) {
+  chrome.storage.local.get([HIDDEN_COUNT_KEY], (result) => {
+    const currentCount = result[HIDDEN_COUNT_KEY] || 0;
+    chrome.storage.local.set({
+      [HIDDEN_COUNT_KEY]: currentCount + 1,
+      [LAST_HIDDEN_TITLE_KEY]: title
+    });
+  });
+}
+
+function getThreadId(item) {
+  const link = item.querySelector(".structItem-title a");
+  if (!link) return null;
+  // Prefer a stable thread-specific ID if present, otherwise fall back to href
+  return (
+    link.getAttribute("data-thread-id") ||
+    link.getAttribute("href") ||
+    null
+  );
+}
+
+function attachHideButton(item) {
+  // Avoid adding multiple buttons
+  if (item.querySelector(".asr-hide-btn")) return;
+
+  const titleContainer = item.querySelector(".structItem-title");
+  const container = titleContainer || item;
+  const titleLink = titleContainer
+    ? titleContainer.querySelector("a")
+    : null;
+
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.textContent = "Hide";
+  btn.className = "asr-hide-btn";
+  btn.style.cssText =
+    "margin-left:6px;padding:1px 5px;font-size:11px;border-radius:3px;border:1px solid rgba(148,163,184,0.6);background:rgba(15,23,42,0.9);color:#e5e7eb;cursor:pointer;vertical-align:middle;";
+
+  btn.addEventListener("click", (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const id = getThreadId(item);
+    // Always hide visually even if we can't derive an ID
+    item.style.display = "none";
+    item.dataset.asrManuallyHidden = "true";
+
+    if (!id) return;
+
+    chrome.storage.local.get([MANUAL_HIDDEN_KEY], (result) => {
+      const current = Array.isArray(result[MANUAL_HIDDEN_KEY])
+        ? result[MANUAL_HIDDEN_KEY]
+        : [];
+      if (current.includes(id)) return;
+      const updated = [...current, id];
+      chrome.storage.local.set({ [MANUAL_HIDDEN_KEY]: updated });
+    });
+  });
+
+  if (titleLink && titleLink.parentNode === titleContainer) {
+    // Insert directly to the right of the title link
+    titleContainer.insertBefore(btn, titleLink.nextSibling);
+  } else {
+    container.appendChild(btn);
+  }
+}
+
+function filterThreads(root, blacklist, manuallyHiddenIds) {
+  const hiddenIds = Array.isArray(manuallyHiddenIds) ? manuallyHiddenIds : [];
   const items = root.querySelectorAll(
     "div.structItem.structItem--thread.js-inlineModContainer"
   );
 
   items.forEach((item) => {
+    // Skip if already processed and counted
+    // Always attach a manual Hide button
+    attachHideButton(item);
+
+    const threadId = getThreadId(item);
+
+    // Respect manually-hidden threads stored in memory
+    if (threadId && hiddenIds.includes(threadId)) {
+      item.style.display = "none";
+      item.dataset.asrManuallyHidden = "true";
+      return;
+    }
+
+    if (item.dataset.asrCounted === "true") {
+      return;
+    }
+
     const titleEl = item.querySelector(".structItem-title");
     if (!titleEl) return;
     const text = titleEl.textContent || "";
 
     if (titleContainsBlacklistedWord(text, blacklist)) {
-      item.style.display = "none";
+      // Only increment if the item is currently visible (not already hidden)
+      if (item.style.display !== "none") {
+        item.style.display = "none";
+        saveHiddenPost(text);
+        // Mark as counted to prevent double-counting
+        item.dataset.asrCounted = "true";
+      }
     }
   });
 }
 
-function initFiltering(blacklist) {
-  const normalized = normalizeWords(blacklist);
-  filterThreads(document, normalized);
 
-  const observer = new MutationObserver((mutations) => {
-    mutations.forEach((mutation) => {
-      mutation.addedNodes.forEach((node) => {
-        if (!(node instanceof HTMLElement)) return;
-        if (node.matches?.("div.structItem.structItem--thread.js-inlineModContainer")) {
-          filterThreads(node.parentElement || document, normalized);
-        } else {
-          filterThreads(node, normalized);
-        }
-      });
-    });
-  });
-
-  observer.observe(document.body, {
-    childList: true,
-    subtree: true
-  });
-}
-
-function loadBlacklistAndInit() {
-  chrome.storage.local.get([STORAGE_KEY], (result) => {
-    const list = result[STORAGE_KEY] || [];
-    initFiltering(list);
-  });
-}
-
-if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", loadBlacklistAndInit);
-} else {
-  loadBlacklistAndInit();
-}
 
 
