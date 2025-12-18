@@ -3,7 +3,7 @@ import { createRoot } from "react-dom/client";
 
 const HIDDEN_COUNT_KEY = "hiddenCount";
 const LAST_HIDDEN_TITLE_KEY = "lastHiddenTitle";
-const CLOUD_FUNCTION_URL = "http://127.0.0.1:5001/gradetransferersandbox/us-central1/authASRUser";
+const CLOUD_FUNCTION_URL = "http://127.0.0.1:5001/gradetransferersandbox/us-central1/authCCUser";
 
 function PopupApp() {
   const [hiddenCount, setHiddenCount] = useState(0);

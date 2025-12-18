@@ -2,11 +2,42 @@ import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 
 const STORAGE_KEY = "blacklist";
+const MANUAL_HIDDEN_KEY = "hiddenThreads";
 
 function loadWordsFromStorage() {
   return new Promise((resolve) => {
     chrome.storage.local.get([STORAGE_KEY], (result) => {
       resolve(result[STORAGE_KEY] || []);
+    });
+  });
+}
+
+function loadBlockedThreadsFromStorage() {
+  return new Promise((resolve) => {
+    chrome.storage.local.get([MANUAL_HIDDEN_KEY], (result) => {
+      const raw = result[MANUAL_HIDDEN_KEY] || [];
+      const normalized = Array.isArray(raw)
+        ? raw
+            .map((entry) =>
+              typeof entry === "string"
+                ? { id: entry, title: entry }
+                : entry
+            )
+            .filter((entry) => entry && entry.id)
+        : [];
+      resolve(normalized);
+    });
+  });
+}
+
+function saveBlockedThreadsToStorage(threads) {
+  return new Promise((resolve, reject) => {
+    chrome.storage.local.set({ [MANUAL_HIDDEN_KEY]: threads }, () => {
+      if (chrome.runtime.lastError) {
+        reject(chrome.runtime.lastError);
+      } else {
+        resolve();
+      }
     });
   });
 }
@@ -27,11 +58,16 @@ function OptionsApp() {
   const [words, setWords] = useState([]);
   const [input, setInput] = useState("");
   const [status, setStatus] = useState("");
+  const [blockedThreads, setBlockedThreads] = useState([]);
 
   useEffect(() => {
     loadWordsFromStorage().then((loaded) => {
       const sorted = [...loaded].sort((a, b) => a.localeCompare(b));
       setWords(sorted);
+    });
+
+    loadBlockedThreadsFromStorage().then((loaded) => {
+      setBlockedThreads(loaded);
     });
   }, []);
 
@@ -85,6 +121,23 @@ function OptionsApp() {
     }
   }
 
+  async function handleUnblockThread(index) {
+    const current = await loadBlockedThreadsFromStorage();
+    if (index < 0 || index >= current.length) return;
+    const updated = [
+      ...current.slice(0, index),
+      ...current.slice(index + 1),
+    ];
+    try {
+      await saveBlockedThreadsToStorage(updated);
+      setBlockedThreads(updated);
+      showStatus("Thread unblocked.");
+    } catch (err) {
+      console.error(err);
+      showStatus("Failed to save.", 2500);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <header className="border-b border-slate-800 bg-slate-950/80 px-6 py-4">
@@ -95,6 +148,38 @@ function OptionsApp() {
       </header>
 
       <main className="mx-auto max-w-xl px-6 py-5">
+        <section className="mb-6">
+          <h2 className="mb-2 text-sm font-medium text-slate-100">
+            Blocked threads
+          </h2>
+          <p className="mb-3 text-xs text-slate-400">
+            These threads were manually hidden. You can unhide them here.
+          </p>
+
+          <ul className="max-h-72 list-none space-y-1 overflow-y-auto p-0">
+            {blockedThreads.length === 0 ? (
+              <li className="text-[11px] text-slate-400">
+                No blocked threads yet.
+              </li>
+            ) : (
+              blockedThreads.map((thread, index) => (
+                <li key={thread.id} className="word-item">
+                  <span className="text-[11px] text-slate-100 break-all">
+                    {thread.title || thread.id}
+                  </span>
+                  <button
+                    type="button"
+                    className="delete-btn"
+                    onClick={() => handleUnblockThread(index)}
+                  >
+                    Unhide
+                  </button>
+                </li>
+              ))
+            )}
+          </ul>
+        </section>
+
         <section className="mb-6">
           <h2 className="mb-2 text-sm font-medium text-slate-100">
             Blocked words
