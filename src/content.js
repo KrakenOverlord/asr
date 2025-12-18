@@ -90,7 +90,25 @@ function attachHideButton(item) {
   btn.textContent = "Hide";
   btn.className = "asr-hide-btn";
   btn.style.cssText =
-    "margin-left:6px;padding:1px 5px;font-size:11px;border-radius:3px;border:1px solid rgba(148,163,184,0.6);background:rgba(15,23,42,0.9);color:#e5e7eb;cursor:pointer;vertical-align:middle;";
+    "margin-left:6px;padding:1px 5px;font-size:11px;border-radius:3px;border:none;cursor:pointer;vertical-align:middle;";
+
+  // Match the color of the meta text (replies/views under the title)
+  const metaText =
+    item.querySelector(".structItem-minor") ||
+    item.querySelector(".structItem-meta") ||
+    item.querySelector(".structItem-cell--meta");
+  if (metaText) {
+    const computed = getComputedStyle(metaText);
+    if (computed && computed.color) {
+      btn.style.color = computed.color;
+    }
+    if (computed && computed.backgroundColor) {
+      btn.style.backgroundColor = computed.backgroundColor;
+    }
+  } else {
+    // Fallback to transparent background if we can't sample one
+    btn.style.backgroundColor = "transparent";
+  }
 
   btn.addEventListener("click", (event) => {
     event.preventDefault();
