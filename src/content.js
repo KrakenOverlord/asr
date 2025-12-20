@@ -1,7 +1,7 @@
-const STORAGE_KEY = "blockedWords";
-const BLOCKED_COUNT_KEY = "BlockedWordsCount";
-const LAST_BLOCKED_TITLE_KEY = "lastBlockedWordsTitle";
-const MANUAL_HIDDEN_KEY = "hiddenThreads";
+const BLOCKED_WORDS_KEY = "blockedWords";
+const BLOCKED_WORDS_COUNT_KEY = "blockedWordsCount";
+const LAST_BLOCKED_WORDS_TITLE_KEY = "lastBlockedWordsTitle";
+const BLOCKED_THREADS_KEY = "blockedThreads";
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", loadBlockedWordsAndInit);
@@ -10,10 +10,10 @@ if (document.readyState === "loading") {
 }
 
 function loadBlockedWordsAndInit() {
-  chrome.storage.local.get([STORAGE_KEY, MANUAL_HIDDEN_KEY], (result) => {
-    const list = result[STORAGE_KEY] || [];
-    const rawHidden = Array.isArray(result[MANUAL_HIDDEN_KEY])
-      ? result[MANUAL_HIDDEN_KEY]
+  chrome.storage.local.get([BLOCKED_WORDS_KEY, BLOCKED_THREADS_KEY], (result) => {
+    const list = result[BLOCKED_WORDS_KEY] || [];
+    const rawHidden = Array.isArray(result[BLOCKED_THREADS_KEY])
+      ? result[BLOCKED_THREADS_KEY]
       : [];
 
     // Normalize to objects { id, title }
@@ -32,24 +32,6 @@ function loadBlockedWordsAndInit() {
 function initFiltering(blockedWords, manuallyHiddenEntries) {
   const normalized = normalizeWords(blockedWords);
   filterThreads(document, normalized, manuallyHiddenEntries);
-
-  // const observer = new MutationObserver((mutations) => {
-  //   mutations.forEach((mutation) => {
-  //     mutation.addedNodes.forEach((node) => {
-  //       if (!(node instanceof HTMLElement)) return;
-  //       if (node.matches?.("div.structItem.structItem--thread.js-inlineModContainer")) {
-  //         filterThreads(node.parentElement || document, normalized, manuallyHiddenEntries);
-  //       } else {
-  //         filterThreads(node, normalized, manuallyHiddenEntries);
-  //       }
-  //     });
-  //   });
-  // });
-
-  // observer.observe(document.body, {
-  //   childList: true,
-  //   subtree: true
-  // });
 }
 
 function normalizeWords(words) {
@@ -68,8 +50,8 @@ function cleanTitleText(raw) {
   if (!raw) return "";
   // Collapse newlines/tabs/extra spaces to a single space
   let cleaned = raw.replace(/\s+/g, " ").trim();
-  // Remove trailing "Hide" (our button label) if present
-  if (cleaned.endsWith("Hide")) {
+  // Remove trailing "block" (our button label) if present
+  if (cleaned.endsWith("Block")) {
     cleaned = cleaned.slice(0, -4).trim();
   }
   return cleaned;
@@ -77,11 +59,11 @@ function cleanTitleText(raw) {
 
 function saveHiddenPost(title) {
   const cleanedTitle = cleanTitleText(title);
-  chrome.storage.local.get([BLOCKED_COUNT_KEY], (result) => {
-    const currentCount = result[BLOCKED_COUNT_KEY] || 0;
+  chrome.storage.local.get([BLOCKED_WORDS_COUNT_KEY], (result) => {
+    const currentCount = result[BLOCKED_WORDS_COUNT_KEY] || 0;
     chrome.storage.local.set({
-      [BLOCKED_COUNT_KEY]: currentCount + 1,
-      [LAST_BLOCKED_TITLE_KEY]: cleanedTitle
+      [BLOCKED_WORDS_COUNT_KEY]: currentCount + 1,
+      [LAST_BLOCKED_WORDS_TITLE_KEY]: cleanedTitle
     });
   });
 }
@@ -99,7 +81,7 @@ function getThreadId(item) {
 
 function attachHideButton(item) {
   // Avoid adding multiple buttons
-  if (item.querySelector(".asr-hide-btn")) return;
+  if (item.querySelector(".asr-block-btn")) return;
 
   const titleContainer = item.querySelector(".structItem-title");
   const container = titleContainer || item;
@@ -109,8 +91,8 @@ function attachHideButton(item) {
 
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.textContent = "Hide";
-  btn.className = "asr-hide-btn";
+  btn.textContent = "Block";
+  btn.className = "asr-block-btn";
   btn.style.cssText =
     "margin-left:6px;padding:1px 5px;font-size:11px;border-radius:3px;border:none;cursor:pointer;vertical-align:middle;";
 
@@ -146,9 +128,9 @@ function attachHideButton(item) {
 
     if (!id) return;
 
-    chrome.storage.local.get([MANUAL_HIDDEN_KEY], (result) => {
-      const raw = Array.isArray(result[MANUAL_HIDDEN_KEY])
-        ? result[MANUAL_HIDDEN_KEY]
+    chrome.storage.local.get([BLOCKED_THREADS_KEY], (result) => {
+      const raw = Array.isArray(result[BLOCKED_THREADS_KEY])
+        ? result[BLOCKED_THREADS_KEY]
         : [];
 
       const existing = raw
@@ -169,7 +151,7 @@ function attachHideButton(item) {
         }
       ];
 
-      chrome.storage.local.set({ [MANUAL_HIDDEN_KEY]: updated });
+      chrome.storage.local.set({ [BLOCKED_THREADS_KEY]: updated });
     });
   });
 
@@ -195,7 +177,7 @@ function filterThreads(root, blockedWords, manuallyHiddenEntries) {
 
   items.forEach((item) => {
     // Skip if already processed and counted
-    // Always attach a manual Hide button
+    // Always attach a manual block button
     attachHideButton(item);
 
     const threadId = getThreadId(item);

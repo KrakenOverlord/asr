@@ -1,21 +1,21 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 
-const STORAGE_KEY = "blockedWords";
-const MANUAL_HIDDEN_KEY = "hiddenThreads";
+const BLOCKED_WORDS_KEY = "blockedWords";
+const BLOCKED_THREADS_KEY = "blockedThreads";
 
 function loadWordsFromStorage() {
   return new Promise((resolve) => {
-    chrome.storage.local.get([STORAGE_KEY], (result) => {
-      resolve(result[STORAGE_KEY] || []);
+    chrome.storage.local.get([BLOCKED_WORDS_KEY], (result) => {
+      resolve(result[BLOCKED_WORDS_KEY] || []);
     });
   });
 }
 
 function loadBlockedThreadsFromStorage() {
   return new Promise((resolve) => {
-    chrome.storage.local.get([MANUAL_HIDDEN_KEY], (result) => {
-      const raw = result[MANUAL_HIDDEN_KEY] || [];
+    chrome.storage.local.get([BLOCKED_THREADS_KEY], (result) => {
+      const raw = result[BLOCKED_THREADS_KEY] || [];
       const normalized = Array.isArray(raw)
         ? raw
             .map((entry) =>
@@ -32,7 +32,7 @@ function loadBlockedThreadsFromStorage() {
 
 function saveBlockedThreadsToStorage(threads) {
   return new Promise((resolve, reject) => {
-    chrome.storage.local.set({ [MANUAL_HIDDEN_KEY]: threads }, () => {
+    chrome.storage.local.set({ [BLOCKED_THREADS_KEY]: threads }, () => {
       if (chrome.runtime.lastError) {
         reject(chrome.runtime.lastError);
       } else {
@@ -44,7 +44,7 @@ function saveBlockedThreadsToStorage(threads) {
 
 function saveWordsToStorage(words) {
   return new Promise((resolve, reject) => {
-    chrome.storage.local.set({ [STORAGE_KEY]: words }, () => {
+    chrome.storage.local.set({ [BLOCKED_WORDS_KEY]: words }, () => {
       if (chrome.runtime.lastError) {
         reject(chrome.runtime.lastError);
       } else {

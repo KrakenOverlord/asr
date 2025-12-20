@@ -1,18 +1,18 @@
 import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 
-const BLOCKED_COUNT_KEY = "BlockedWordsCount";
-const LAST_BLOCKED_TITLE_KEY = "lastBlockedWordsTitle";
+const BLOCKED_WORDS_COUNT_KEY = "blockedWordsCount";
+const LAST_BLOCKED_WORDS_TITLE_KEY = "lastBlockedWordsTitle";
 
 function PopupApp() {
-  const [BlockedWordsCount, setBlockedWordsCount] = useState(0);
+  const [blockedWordsCount, setBlockedWordsCount] = useState(0);
   const [lastBlockedWordsTitle, setlastBlockedWordsTitle] = useState("");
 
   useEffect(() => {
     // Load the hidden count and last hidden title from storage when popup opens
-    chrome.storage.local.get([BLOCKED_COUNT_KEY, LAST_BLOCKED_TITLE_KEY], (result) => {
-      setBlockedWordsCount(result[BLOCKED_COUNT_KEY] || 0);
-      setlastBlockedWordsTitle(result[LAST_BLOCKED_TITLE_KEY] || "");
+    chrome.storage.local.get([BLOCKED_WORDS_COUNT_KEY, LAST_BLOCKED_WORDS_TITLE_KEY], (result) => {
+      setBlockedWordsCount(result[BLOCKED_WORDS_COUNT_KEY] || 0);
+      setlastBlockedWordsTitle(result[LAST_BLOCKED_WORDS_TITLE_KEY] || "");
     });
   }, []);
 
@@ -32,7 +32,7 @@ function PopupApp() {
       </p>
       <div className="mb-3 text-[11px] text-slate-300">
         <span className="font-medium">Posts hidden:</span>{" "}
-        <span className="text-slate-200">{BlockedWordsCount.toLocaleString()}</span>
+        <span className="text-slate-200">{blockedWordsCount.toLocaleString()}</span>
       </div>
       {lastBlockedWordsTitle && (
         <div className="mb-3 text-[11px] text-slate-300">
