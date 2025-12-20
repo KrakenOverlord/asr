@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 
-const STORAGE_KEY = "blacklist";
+const STORAGE_KEY = "blockedWords";
 const MANUAL_HIDDEN_KEY = "hiddenThreads";
 
 function loadWordsFromStorage() {

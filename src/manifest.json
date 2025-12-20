@@ -1,26 +1,18 @@
 {
   "manifest_version": 3,
-  "name": "ASR",
-  "description": "ASR: Hide posts containing specific words.",
+  "name": "ASR Blocker",
+  "description": "ASR Blocker: Block threads and posts you don't want to see.",
   "version": "1.0.0",
   "action": {
     "default_popup": "popup.html",
-    "default_title": "ASR"
+    "default_title": "ASR Blocker"
   },
   "options_ui": {
     "page": "options.html",
     "open_in_tab": true
   },
-  "permissions": ["storage", "identity"],
+  "permissions": ["storage"],
   "host_permissions": ["http://localhost/*"],
-  "oauth2": {
-    "client_id": "861425009327-bga68hv29um8p837e3pqooqog8icn7nk.apps.googleusercontent.com",
-    "scopes": [
-      "openid",
-      "email",
-      "profile"
-    ]
-  },
   "content_scripts": [
     {
       "matches": [

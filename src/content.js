@@ -1,15 +1,15 @@
-const STORAGE_KEY = "blacklist";
-const HIDDEN_COUNT_KEY = "hiddenCount";
-const LAST_HIDDEN_TITLE_KEY = "lastHiddenTitle";
+const STORAGE_KEY = "blockedWords";
+const BLOCKED_COUNT_KEY = "BlockedWordsCount";
+const LAST_BLOCKED_TITLE_KEY = "lastBlockedWordsTitle";
 const MANUAL_HIDDEN_KEY = "hiddenThreads";
 
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", loadBlacklistAndInit);
+  document.addEventListener("DOMContentLoaded", loadBlockedWordsAndInit);
 } else {
-  loadBlacklistAndInit();
+  loadBlockedWordsAndInit();
 }
 
-function loadBlacklistAndInit() {
+function loadBlockedWordsAndInit() {
   chrome.storage.local.get([STORAGE_KEY, MANUAL_HIDDEN_KEY], (result) => {
     const list = result[STORAGE_KEY] || [];
     const rawHidden = Array.isArray(result[MANUAL_HIDDEN_KEY])
@@ -29,8 +29,8 @@ function loadBlacklistAndInit() {
   });
 }
 
-function initFiltering(blacklist, manuallyHiddenEntries) {
-  const normalized = normalizeWords(blacklist);
+function initFiltering(blockedWords, manuallyHiddenEntries) {
+  const normalized = normalizeWords(blockedWords);
   filterThreads(document, normalized, manuallyHiddenEntries);
 
   // const observer = new MutationObserver((mutations) => {
@@ -58,10 +58,10 @@ function normalizeWords(words) {
     .filter((w) => w.length > 0);
 }
 
-function titleContainsBlacklistedWord(titleText, blacklist) {
-  if (!titleText || blacklist.length === 0) return false;
+function titleContainsBlockedWord(titleText, blockedWords) {
+  if (!titleText || blockedWords.length === 0) return false;
   const lowerTitle = titleText.toLowerCase();
-  return blacklist.some((word) => lowerTitle.includes(word));
+  return blockedWords.some((word) => lowerTitle.includes(word));
 }
 
 function cleanTitleText(raw) {
@@ -77,11 +77,11 @@ function cleanTitleText(raw) {
 
 function saveHiddenPost(title) {
   const cleanedTitle = cleanTitleText(title);
-  chrome.storage.local.get([HIDDEN_COUNT_KEY], (result) => {
-    const currentCount = result[HIDDEN_COUNT_KEY] || 0;
+  chrome.storage.local.get([BLOCKED_COUNT_KEY], (result) => {
+    const currentCount = result[BLOCKED_COUNT_KEY] || 0;
     chrome.storage.local.set({
-      [HIDDEN_COUNT_KEY]: currentCount + 1,
-      [LAST_HIDDEN_TITLE_KEY]: cleanedTitle
+      [BLOCKED_COUNT_KEY]: currentCount + 1,
+      [LAST_BLOCKED_TITLE_KEY]: cleanedTitle
     });
   });
 }
@@ -181,7 +181,7 @@ function attachHideButton(item) {
   }
 }
 
-function filterThreads(root, blacklist, manuallyHiddenEntries) {
+function filterThreads(root, blockedWords, manuallyHiddenEntries) {
   const hiddenIds = Array.isArray(manuallyHiddenEntries)
     ? manuallyHiddenEntries
         .map((entry) =>
@@ -215,7 +215,7 @@ function filterThreads(root, blacklist, manuallyHiddenEntries) {
     if (!titleEl) return;
     const text = titleEl.textContent || "";
 
-    if (titleContainsBlacklistedWord(text, blacklist)) {
+    if (titleContainsBlockedWord(text, blockedWords)) {
       // Only increment if the item is currently visible (not already hidden)
       if (item.style.display !== "none") {
         item.style.display = "none";
