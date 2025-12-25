@@ -2,35 +2,16 @@ import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 
 function PopupApp() {
-  const [totalBlocked, setTotalBlocked] = useState(0);
+  const [autoBlocked, setAutoBlocked] = useState(0);
   const [manuallyBlocked, setManuallyBlocked] = useState(0);
 
   useEffect(() => {
     // Load the total blocked count on mount
-    chrome.storage.local.get(["totalBlockedThreadsCount", "blockedThreads"], (result) => {
-      setTotalBlocked(result.totalBlockedThreadsCount || 0);
+    chrome.storage.local.get(["blockedThreadsCount", "blockedThreads"], (result) => {
+      setAutoBlocked(result.blockedThreadsCount || 0);
       const blockedThreads = Array.isArray(result.blockedThreads) ? result.blockedThreads : [];
       setManuallyBlocked(blockedThreads.length);
     });
-
-    // Listen for updates to the counts
-    const handleStorageChange = (changes) => {
-      if (changes.totalBlockedThreadsCount) {
-        setTotalBlocked(changes.totalBlockedThreadsCount.newValue || 0);
-      }
-      if (changes.blockedThreads) {
-        const blockedThreads = Array.isArray(changes.blockedThreads.newValue)
-          ? changes.blockedThreads.newValue
-          : [];
-        setManuallyBlocked(blockedThreads.length);
-      }
-    };
-
-    chrome.storage.onChanged.addListener(handleStorageChange);
-
-    return () => {
-      chrome.storage.onChanged.removeListener(handleStorageChange);
-    };
   }, []);
 
   const openOptions = () => {
@@ -49,7 +30,7 @@ function PopupApp() {
       </p>
       <div className="mb-3 rounded-md bg-slate-800 px-3 py-2">
         <p className="text-[11px] text-slate-400">Total threads automatically blocked</p>
-        <p className="text-lg font-semibold text-slate-50">{totalBlocked}</p>
+        <p className="text-lg font-semibold text-slate-50">{autoBlocked}</p>
       </div>
       <div className="mb-3 rounded-md bg-slate-800 px-3 py-2">
         <p className="text-[11px] text-slate-400">Total threads manually blocked</p>

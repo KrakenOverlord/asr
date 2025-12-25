@@ -31,17 +31,11 @@ function processThreads(threads, blockedThreads) {
   threads.forEach((thread) => {
     const threadId = getThreadId(thread);
 
-    // Skip if we can't get a thread ID
-    if (!threadId) {
-      attachHideButton(thread);
-      return;
-    }
-
     if (blockedThreadsIds.includes(threadId)) {
       thread.style.display = "none";
       count++;
     } else {
-      attachHideButton(thread);
+      addBlockButton(thread);
     }
   });
 
@@ -72,7 +66,7 @@ function getTitle(item) {
   return cleaned;
 }
 
-function attachHideButton(item) {
+function addBlockButton(item) {
   // Avoid adding multiple buttons
   if (item.querySelector(".asr-block-btn")) return;
 
