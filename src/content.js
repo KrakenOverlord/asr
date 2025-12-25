@@ -1,40 +1,51 @@
 const BLOCKED_THREADS_KEY = "blockedThreads";
+const BLOCKED_THREADS_COUNT_KEY = "blockedThreadsCount";
 
 if (document.readyState === "loading") {
-  document.addEventListener("DOMContentLoaded", loadBlockedThreadsAndInit);
+  document.addEventListener("DOMContentLoaded", init);
 } else {
-  loadBlockedThreadsAndInit();
+  init();
 }
 
-function loadBlockedThreadsAndInit() {
-  chrome.storage.local.get([BLOCKED_THREADS_KEY], (result) => {
-    const blockedThreads = Array.isArray(result[BLOCKED_THREADS_KEY])
-      ? result[BLOCKED_THREADS_KEY]
-      : [];
+async function init() {
+  // Load all threads from DOM
+  const threads = document.querySelectorAll("div.structItem.structItem--thread.js-inlineModContainer") || [];
 
-    filterThreads(blockedThreads);
+  // Load all the blocked threads from storage
+  const result = await chrome.storage.local.get([BLOCKED_THREADS_KEY, BLOCKED_THREADS_COUNT_KEY]);
+  const blockedThreads = result[BLOCKED_THREADS_KEY] || [];
+  const blockedThreadsCount = result[BLOCKED_THREADS_COUNT_KEY] || 0;
+
+  const count = processThreads(threads, blockedThreads);
+
+  // Increment the total blocked threads counter
+  chrome.storage.local.set({
+    [BLOCKED_THREADS_COUNT_KEY]: blockedThreadsCount + count
   });
 }
 
-function filterThreads(blockedThreads) {
-  const blockedIds = blockedThreads.map((entry) => entry.id)
-  const items = document.querySelectorAll(
-    "div.structItem.structItem--thread.js-inlineModContainer"
-  );
+function processThreads(threads, blockedThreads) {
+  const blockedThreadsIds = blockedThreads.map((entry) => entry.id);
 
-  items.forEach((item) => {
-    // Always attach a manual block button
-    attachHideButton(item);
+  let count = 0;
+  threads.forEach((thread) => {
+    const threadId = getThreadId(thread);
 
-    const threadId = getThreadId(item);
-
-    // Respect manually-hidden threads stored in memory
-    if (threadId && blockedIds.includes(threadId)) {
-      item.style.display = "none";
-      item.dataset.asrManuallyHidden = "true";
+    // Skip if we can't get a thread ID
+    if (!threadId) {
+      attachHideButton(thread);
       return;
     }
+
+    if (blockedThreadsIds.includes(threadId)) {
+      thread.style.display = "none";
+      count++;
+    } else {
+      attachHideButton(thread);
+    }
   });
+
+  return count;
 }
 
 function getThreadId(item) {
@@ -43,14 +54,17 @@ function getThreadId(item) {
   const threadListItemClass = classList.find((cls) =>
     cls.startsWith("js-threadListItem-")
   );
+  if (!threadListItemClass) return null;
   const id = threadListItemClass.replace("js-threadListItem-", "");
   return id;
 }
 
-function cleanTitleText(raw) {
-  if (!raw) return "";
+function getTitle(item) {
+  const raw = item.querySelector(".structItem-title")?.textContent || "";
+
   // Collapse newlines/tabs/extra spaces to a single space
   let cleaned = raw.replace(/\s+/g, " ").trim();
+
   // Remove trailing "block" (our button label) if present
   if (cleaned.endsWith("Block")) {
     cleaned = cleaned.slice(0, -5).trim();
@@ -63,10 +77,9 @@ function attachHideButton(item) {
   if (item.querySelector(".asr-block-btn")) return;
 
   const titleContainer = item.querySelector(".structItem-title");
-  const container = titleContainer || item;
-  const titleLink = titleContainer
-    ? titleContainer.querySelector("a")
-    : null;
+  if (!titleContainer) return; // Can't attach button without title container
+
+  const titleLink = titleContainer.querySelector("a");
 
   const btn = document.createElement("button");
   btn.type = "button";
@@ -95,32 +108,38 @@ function attachHideButton(item) {
 
   btn.addEventListener("click", (event) => blockThread(event, item));
 
+  // Add hover underline effect
+  btn.addEventListener("mouseenter", () => {
+    btn.style.textDecoration = "underline";
+  });
+  btn.addEventListener("mouseleave", () => {
+    btn.style.textDecoration = "none";
+  });
+
   if (titleLink && titleLink.parentNode === titleContainer) {
     // Insert directly to the right of the title link
     titleContainer.insertBefore(btn, titleLink.nextSibling);
   } else {
-    container.appendChild(btn);
+    titleContainer.appendChild(btn);
   }
 }
 
+// This is called when the user presses the block button
 const blockThread = (event, item) => {
   event.preventDefault();
   event.stopPropagation();
 
-  const id = getThreadId(item);
-  const rawTitle =
-    item.querySelector(".structItem-title")?.textContent || "";
-  const titleText = cleanTitleText(rawTitle);
-  // Always hide visually even if we can't derive an ID
+  // Always hide visually
   item.style.display = "none";
-  item.dataset.asrManuallyHidden = "true";
 
-  chrome.storage.local.get([BLOCKED_THREADS_KEY], (result) => {
+  chrome.storage.local.get([BLOCKED_THREADS_KEY, BLOCKED_THREADS_COUNT_KEY], (result) => {
     const blockedThreads = Array.isArray(result[BLOCKED_THREADS_KEY])
       ? result[BLOCKED_THREADS_KEY]
       : [];
 
     const blockedThreadsIds = blockedThreads.map((entry) => entry.id);
+
+    const id = getThreadId(item);
 
     if (blockedThreadsIds.includes(id)) return;
 
@@ -128,10 +147,15 @@ const blockThread = (event, item) => {
       ...blockedThreads,
       {
         id,
-        title: titleText
+        title: getTitle(item)
       }
     ];
 
-    chrome.storage.local.set({ [BLOCKED_THREADS_KEY]: updated });
+    // Increment the total blocked threads counter
+    const currentCount = result[BLOCKED_THREADS_COUNT_KEY] || 0;
+    chrome.storage.local.set({
+      [BLOCKED_THREADS_KEY]: updated,
+      [BLOCKED_THREADS_COUNT_KEY]: currentCount + 1
+    });
   });
 }
