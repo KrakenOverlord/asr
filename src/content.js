@@ -79,6 +79,7 @@ function addBlockButton(item) {
   btn.type = "button";
   btn.textContent = "Block";
   btn.className = "asr-block-btn";
+  btn.title = "Block this thread from being seen";
   btn.style.cssText =
     "margin-left:6px;padding:1px 5px;font-size:11px;border-radius:3px;border:none;cursor:pointer;vertical-align:middle;";
 
