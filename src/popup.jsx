@@ -2,15 +2,20 @@ import React, { useState, useEffect } from "react";
 import { createRoot } from "react-dom/client";
 
 function PopupApp() {
-  const [autoBlocked, setAutoBlocked] = useState(0);
   const [manuallyBlocked, setManuallyBlocked] = useState(0);
+  const [totalCount, setTotalCount] = useState(0);
 
   useEffect(() => {
-    // Load the total blocked count on mount
-    chrome.storage.local.get(["blockedThreadsCount", "blockedThreads"], (result) => {
-      setAutoBlocked(result.blockedThreadsCount || 0);
+    // Load the blocked threads on mount
+    chrome.storage.local.get(["blockedThreads"], (result) => {
       const blockedThreads = Array.isArray(result.blockedThreads) ? result.blockedThreads : [];
       setManuallyBlocked(blockedThreads.length);
+
+      // Calculate the sum of all counts
+      const sum = blockedThreads.reduce((total, thread) => {
+        return total + (thread.count || 0);
+      }, 0);
+      setTotalCount(sum);
     });
   }, []);
 
@@ -29,19 +34,28 @@ function PopupApp() {
         Block threads you don't want to see.
       </p>
       <div className="mb-3 rounded-md bg-slate-800 px-3 py-2">
-        <p className="text-[11px] text-slate-400">Total threads automatically blocked</p>
-        <p className="text-lg font-semibold text-slate-50">{autoBlocked}</p>
-      </div>
-      <div className="mb-3 rounded-md bg-slate-800 px-3 py-2">
-        <p className="text-[11px] text-slate-400">Total threads manually blocked</p>
-        <p className="text-lg font-semibold text-slate-50">{manuallyBlocked}</p>
+        {manuallyBlocked === 0 ? (
+          <span className="text-[11px] text-slate-400">
+            Click on the Block button to the right of thread titles to block that thread.
+          </span>
+        ) : (
+          <>
+            <span className="text-[11px] text-slate-400">
+              You have blocked <span className="font-semibold text-slate-50">{manuallyBlocked}</span> thread{manuallyBlocked !== 1 ? 's' : ''}.
+            </span>
+            <br />
+            <span className="text-[11px] text-slate-400">
+              Total times blocked: <span className="font-semibold text-slate-50">{totalCount}</span>
+            </span>
+          </>
+        )}
       </div>
       <button
         type="button"
         className="w-full rounded-md border border-gray-700 bg-black px-3 py-2 text-xs font-medium text-white hover:border-gray-600 hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-gray-800 focus:ring-offset-2 focus:ring-offset-slate-950 transition-colors"
         onClick={openOptions}
       >
-        Open ASR Blocker Settings
+        Settings
       </button>
     </div>
   );

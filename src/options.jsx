@@ -84,7 +84,7 @@ function OptionsApp() {
             Blocked Threads
           </h2>
           <p className="mb-3 text-xs text-slate-400">
-            These threads were manually blocked. You can unblock them here.
+            You blocked these threads. You can unblock them here.
           </p>
 
           <p className="mb-2 min-h-[18px] text-[11px] text-indigo-200">
@@ -101,6 +101,11 @@ function OptionsApp() {
                 <li key={thread.id} className="word-item">
                   <span className="text-[11px] text-slate-100 break-all">
                     {thread.title || thread.id}
+                    {thread.count !== undefined && (
+                      <span className="ml-2 text-slate-400">
+                        (blocked {thread.count} time{thread.count !== 1 ? 's' : ''})
+                      </span>
+                    )}
                   </span>
                   <button
                     type="button"

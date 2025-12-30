@@ -1,5 +1,4 @@
 const BLOCKED_THREADS_KEY = "blockedThreads";
-const BLOCKED_THREADS_COUNT_KEY = "blockedThreadsCount";
 
 if (document.readyState === "loading") {
   document.addEventListener("DOMContentLoaded", init);
@@ -12,34 +11,57 @@ async function init() {
   const threads = document.querySelectorAll("div.structItem.structItem--thread.js-inlineModContainer") || [];
 
   // Load all the blocked threads from storage
-  const result = await chrome.storage.local.get([BLOCKED_THREADS_KEY, BLOCKED_THREADS_COUNT_KEY]);
+  const result = await chrome.storage.local.get([BLOCKED_THREADS_KEY]);
   const blockedThreads = result[BLOCKED_THREADS_KEY] || [];
-  const blockedThreadsCount = result[BLOCKED_THREADS_COUNT_KEY] || 0;
 
-  const count = processThreads(threads, blockedThreads);
-
-  // Increment the total blocked threads counter
-  chrome.storage.local.set({
-    [BLOCKED_THREADS_COUNT_KEY]: blockedThreadsCount + count
-  });
+  await processThreads(threads, blockedThreads);
 }
 
-function processThreads(threads, blockedThreads) {
-  const blockedThreadsIds = blockedThreads.map((entry) => entry.id);
+async function processThreads(threads, blockedThreads) {
+  const blockedThreadsMap = new Map(blockedThreads.map((entry) => [entry.id, entry]));
+  const countIncrements = new Map();
 
-  let count = 0;
   threads.forEach((thread) => {
     const threadId = getThreadId(thread);
 
-    if (blockedThreadsIds.includes(threadId)) {
+    if (blockedThreadsMap.has(threadId)) {
       thread.style.display = "none";
-      count++;
+      // Increment count for this thread (can be multiple times if thread appears multiple times)
+      const currentIncrement = countIncrements.get(threadId) || 0;
+      countIncrements.set(threadId, currentIncrement + 1);
     } else {
       addBlockButton(thread);
     }
   });
 
-  return count;
+  // Update storage with incremented counts if any threads were blocked
+  if (countIncrements.size > 0) {
+    // Increment count for each processed thread
+    const updatedBlockedThreads = blockedThreads.map((entry) => {
+      const increment = countIncrements.get(entry.id);
+      if (increment) {
+        return {
+          ...entry,
+          count: (entry.count || 0) + increment
+        };
+      }
+      return entry;
+    });
+
+    return new Promise((resolve) => {
+      chrome.storage.local.set(
+        {
+          [BLOCKED_THREADS_KEY]: updatedBlockedThreads
+        },
+        () => {
+          if (chrome.runtime.lastError) {
+            console.error("ASR Blocker: Error updating counts:", chrome.runtime.lastError);
+          }
+          resolve();
+        }
+      );
+    });
+  }
 }
 
 function getThreadId(item) {
@@ -127,30 +149,49 @@ const blockThread = (event, item) => {
   // Always hide visually
   item.style.display = "none";
 
-  chrome.storage.local.get([BLOCKED_THREADS_KEY, BLOCKED_THREADS_COUNT_KEY], (result) => {
+  const id = getThreadId(item);
+  if (!id) {
+    console.error("ASR Blocker: Could not extract thread ID");
+    return;
+  }
+
+  chrome.storage.local.get([BLOCKED_THREADS_KEY], (result) => {
+    if (chrome.runtime.lastError) {
+      console.error("ASR Blocker: Error reading storage:", chrome.runtime.lastError);
+      return;
+    }
+
     const blockedThreads = Array.isArray(result[BLOCKED_THREADS_KEY])
       ? result[BLOCKED_THREADS_KEY]
       : [];
 
     const blockedThreadsIds = blockedThreads.map((entry) => entry.id);
 
-    const id = getThreadId(item);
-
-    if (blockedThreadsIds.includes(id)) return;
+    if (blockedThreadsIds.includes(id)) {
+      console.log("ASR Blocker: Thread already blocked:", id);
+      return;
+    }
 
     const updated = [
       ...blockedThreads,
       {
         id,
-        title: getTitle(item)
+        title: getTitle(item),
+        count: 1
       }
     ];
 
-    // Increment the total blocked threads counter
-    const currentCount = result[BLOCKED_THREADS_COUNT_KEY] || 0;
-    chrome.storage.local.set({
-      [BLOCKED_THREADS_KEY]: updated,
-      [BLOCKED_THREADS_COUNT_KEY]: currentCount + 1
-    });
+    chrome.storage.local.set(
+      {
+        [BLOCKED_THREADS_KEY]: updated
+      },
+      () => {
+        if (chrome.runtime.lastError) {
+          console.error("ASR Blocker: Error saving to storage:", chrome.runtime.lastError);
+        } else {
+          console.log("ASR Blocker: Thread blocked successfully:", id);
+        }
+      }
+    );
   });
 }
