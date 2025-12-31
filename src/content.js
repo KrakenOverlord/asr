@@ -20,12 +20,14 @@ async function init() {
 async function processThreads(threads, blockedThreads) {
   const blockedThreadsMap = new Map(blockedThreads.map((entry) => [entry.id, entry]));
   const countIncrements = new Map();
+  let blockedCount = 0;
 
   threads.forEach((thread) => {
     const threadId = getThreadId(thread);
 
     if (blockedThreadsMap.has(threadId)) {
       thread.style.display = "none";
+      blockedCount++;
       // Increment count for this thread (can be multiple times if thread appears multiple times)
       const currentIncrement = countIncrements.get(threadId) || 0;
       countIncrements.set(threadId, currentIncrement + 1);
@@ -33,6 +35,11 @@ async function processThreads(threads, blockedThreads) {
       addBlockButton(thread);
     }
   });
+
+  // Show visual indicator if threads were blocked
+  if (blockedCount > 0) {
+    showBlockedIndicator(blockedCount);
+  }
 
   // Update storage with incremented counts if any threads were blocked
   if (countIncrements.size > 0) {
@@ -86,6 +93,73 @@ function getTitle(item) {
     cleaned = cleaned.slice(0, -5).trim();
   }
   return cleaned;
+}
+
+function showBlockedIndicator(count) {
+  // Remove existing indicator if present
+  const existing = document.getElementById("asr-blocked-indicator");
+  if (existing) {
+    existing.remove();
+  }
+
+  // Create indicator banner
+  const indicator = document.createElement("div");
+  indicator.id = "asr-blocked-indicator";
+  indicator.style.cssText = `
+    position: fixed;
+    top: 8px;
+    right: 20px;
+    background: #1e293b;
+    color: #e2e8f0;
+    padding: 12px 16px;
+    border-radius: 6px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+    font-size: 13px;
+    z-index: 10000;
+    border: 1px solid #334155;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    max-width: 300px;
+    animation: asr-slide-in 0.3s ease-out;
+  `;
+
+  const message = count === 1
+    ? `1 thread was blocked`
+    : `${count} threads were blocked`;
+
+  indicator.textContent = `🚫 ${message}`;
+
+  // Add animation
+  const style = document.createElement("style");
+  style.textContent = `
+    @keyframes asr-slide-in {
+      from {
+        transform: translateX(100%);
+        opacity: 0;
+      }
+      to {
+        transform: translateX(0);
+        opacity: 1;
+      }
+    }
+  `;
+  if (!document.getElementById("asr-indicator-styles")) {
+    style.id = "asr-indicator-styles";
+    document.head.appendChild(style);
+  }
+
+  document.body.appendChild(indicator);
+
+  // Auto-remove after 4 seconds
+  setTimeout(() => {
+    if (indicator.parentNode) {
+      indicator.style.animation = "asr-slide-in 0.3s ease-out reverse";
+      setTimeout(() => {
+        if (indicator.parentNode) {
+          indicator.remove();
+        }
+      }, 300);
+    }
+  }, 4000);
 }
 
 function addBlockButton(item) {
@@ -190,6 +264,7 @@ const blockThread = (event, item) => {
           console.error("ASR Blocker: Error saving to storage:", chrome.runtime.lastError);
         } else {
           console.log("ASR Blocker: Thread blocked successfully:", id);
+          showBlockedIndicator(1);
         }
       }
     );
